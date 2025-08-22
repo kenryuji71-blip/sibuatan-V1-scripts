@@ -85,51 +85,162 @@ playerTab:CreateToggle({
             -- kontrol fly
             while flying and task.wait() do
                 local dir = Vector3.zero
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += workspace.CurrentCamera.CFrame.LookVector end
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= workspace.CurrentCamera.CFrame.LookVector end
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= workspace.CurrentCamera.CFrame.RightVector end
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += workspace.CurrentCamera.CFrame.RightVector end
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
-                if game.UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir -= Vector3.new(0,1,0) end
+--// Sibuatan V1 Fixed Script
+-- Pastikan sudah inject Rayfield sebelum jalanin script ini
 
-                bv.Velocity = dir * flySpeed
-                hum.PlatformStand = true
-            end
-            bv:Destroy()
-            hum.PlatformStand = false
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Sibuatan V1 Hub",
+   LoadingTitle = "Loading Sibuatan Hub...",
+   LoadingSubtitle = "by kenryuji71",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "SibuatanHub",
+      FileName = "Config"
+   },
+   KeySystem = false,
+})
+
+--====================================================--
+-- Tab Teleport
+--====================================================--
+local TeleTab = Window:CreateTab("Teleport", 4483362458)
+
+local locations = {
+    ["Basecamp"]        = Vector3.new(987, 112, -698),
+    ["Pos Pendakian"]   = Vector3.new(5200, 4000, 2100),
+    ["Puncak Sibuatan"] = Vector3.new(5344, 8113, 2117),
+    ["Checkpoint 19"]   = Vector3.new(1667, 4284, 5191),
+}
+
+local function teleportTo(pos)
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char:MoveTo(pos)
+    end
+end
+
+for name, pos in pairs(locations) do
+    TeleTab:CreateButton({
+        Name = name,
+        Callback = function()
+            teleportTo(pos)
+        end,
+    })
+end
+
+--====================================================--
+-- Tab Player
+--====================================================--
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+-- Fly V2
+local flying = false
+local flyConn
+
+local function startFly()
+    if flying then return end
+    flying = true
+    local plr = game.Players.LocalPlayer
+    local hum = plr.Character:WaitForChild("HumanoidRootPart")
+    flyConn = game:GetService("RunService").Heartbeat:Connect(function()
+        if flying and hum then
+            hum.Velocity = Vector3.new(0, 5, 0) -- ke atas pelan
+        end
+    end)
+end
+
+local function stopFly()
+    flying = false
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+end
+
+PlayerTab:CreateToggle({
+    Name = "Fly V2",
+    CurrentValue = false,
+    Flag = "FlyV2",
+    Callback = function(Value)
+        if Value then
+            startFly()
+        else
+            stopFly()
         end
     end,
 })
 
-playerTab:CreateSlider({
-    Name = "Fly Speed",
-    Range = {10, 200},
-    Increment = 5,
-    Suffix = "Speed",
-    CurrentValue = 60,
-    Callback = function(value)
-        flySpeed = value
+-- Anti Fall Damage
+local antiFallEnabled = false
+local fallConn
+
+local function enableAntiFall()
+    if fallConn then return end
+    antiFallEnabled = true
+    fallConn = game:GetService("RunService").Heartbeat:Connect(function()
+        local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if antiFallEnabled and hrp and hrp.Velocity.Y < -50 then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -10, hrp.Velocity.Z)
+        end
+    end)
+end
+
+local function disableAntiFall()
+    antiFallEnabled = false
+    if fallConn then
+        fallConn:Disconnect()
+        fallConn = nil
+    end
+end
+
+PlayerTab:CreateToggle({
+    Name = "Anti Fall Damage",
+    CurrentValue = false,
+    Flag = "AntiFall",
+    Callback = function(Value)
+        if Value then enableAntiFall() else disableAntiFall() end
     end,
 })
 
--- // Anti Lag / Low Texture
-utilityTab:CreateButton({
+--====================================================--
+-- Tab Utility
+--====================================================--
+local UtilTab = Window:CreateTab("Utility", 4483362458)
+
+local texturesDisabled = false
+
+local function lowTexture()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Texture") or v:IsA("Decal") then
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Enabled = false
+        end
+    end
+end
+
+local function restoreTexture()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Texture") or v:IsA("Decal") then
+            v.Transparency = 0
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Enabled = true
+        end
+    end
+end
+
+UtilTab:CreateToggle({
     Name = "Anti Lag / Low Texture",
-    Callback = function()
-        -- Hilangkan efek & kurangi lag
-        for _,v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.Plastic
-                v.Reflectance = 0
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v:Destroy()
-            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                v.Enabled = false
-            end
+    CurrentValue = false,
+    Flag = "LowTex",
+    Callback = function(Value)
+        if Value then
+            lowTexture()
+        else
+            restoreTexture()
         end
-        sethiddenproperty(game.Lighting, "Technology", Enum.Technology.Compatibility)
-        game.Lighting.GlobalShadows = false
-        game.Lighting.FogEnd = 9e9
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
     end,
+})
+
+--====================================================--
+Rayfield:LoadConfiguration()
 })
