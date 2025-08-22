@@ -1,3 +1,4 @@
+print("✅ Script Sibuatan V1 berhasil dijalankan!")
 -- // Rayfield UI Loader
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
